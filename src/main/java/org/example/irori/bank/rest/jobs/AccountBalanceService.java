@@ -60,7 +60,7 @@ public class AccountBalanceService {
         
         Integer businessCustomerId = null;
         Integer businessAccountNumber = null;
-        Integer accountId = null;
+        Integer accountId = null; //This is incosequentially handled and may be returned as null
         
         //this section needs way more error handling
         if (accountIdentifier.startsWith("BA")) {
