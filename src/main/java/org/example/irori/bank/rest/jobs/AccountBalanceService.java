@@ -118,7 +118,7 @@ public class AccountBalanceService {
                 || (currency.equals(Currency.EURO) && balance > 8400)
                 || (currency.equals(SEK) && balance > 86000)) {
             
-            alertService.triggerAlert(accountId, "investment_opportunity");
+            alertService.triggerAlert(accountId, "investment_opportunity"); //accountID may be null, not so useful then eh!
         }
         //Always comment when code is commented out ... or remove it
     /*
