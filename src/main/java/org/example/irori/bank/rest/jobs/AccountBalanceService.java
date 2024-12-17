@@ -1,10 +1,13 @@
-package org.example;
+package org.example.irori.bank.rest.jobs;
 
-import static se.irori.bank.rest.jobs.AccountBalanceService.Currency.GBP;
-import static se.irori.bank.rest.jobs.AccountBalanceService.Currency.SEK;
-import static se.irori.bank.rest.jobs.AccountBalanceService.Currency.USD;
+import static org.example.irori.bank.rest.jobs.AccountBalanceService.Currency.GBP;
+import static org.example.irori.bank.rest.jobs.AccountBalanceService.Currency.SEK;
+import static org.example.irori.bank.rest.jobs.AccountBalanceService.Currency.USD;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.example.irori.bank.rest.jobs.beans.AccountService;
+import org.example.irori.bank.rest.jobs.beans.AlertServiceImpl;
+import org.example.irori.bank.rest.jobs.beans.ConverterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -58,6 +61,8 @@ public class AccountBalanceService {
         Integer businessCustomerId = null;
         Integer businessAccountNumber = null;
         Integer accountId = null;
+        
+        //this section needs way more error handling
         if (accountIdentifier.startsWith("BA")) {
             // business account, format BA1234567890-4
             String[] parts = accountIdentifier.split("-");
@@ -73,8 +78,8 @@ public class AccountBalanceService {
         try {
             currency = Currency.valueOf(selectedCurrency);
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            return null;
+            e.printStackTrace(); // Should use a logger instead
+            return null; //Should return an appropiate HTTP code instead
         }
         
         Account account = null;
@@ -82,16 +87,18 @@ public class AccountBalanceService {
             account = accountService.findAccountById(accountId);
         } else {
             List<Account> businessAccounts = accountService.findAccountsByBusinessCustomerId(businessCustomerId);
-            final Integer finalBusinessAccountNumber = businessAccountNumber;
+            final Integer finalBusinessAccountNumber = businessAccountNumber; //Why this assignmment?
             account = businessAccounts.stream()
-                                      .filter(a -> a.getAccountNumber().equals(finalBusinessAccountNumber)).findFirst().get();
+                                      .filter(a -> a.getAccountNumber().equals(finalBusinessAccountNumber))
+                                      .findFirst()//.findAny() is perhaps more proper
+                                      .get(); //This need proper Optionals nullhandling of one sort or another
         }
-        if (email != null && email.length() > 0) {
-            account.setContactInformation(email);
+        if (email != null && email.length() > 0) { //use .isEmpty()
+            account.setContactInformation(email); //Should we really deal with email here?
             accountService.save(account);
         }
         
-        double currentBalanceInSek = account.getCurrentBalanceInSek();
+        double currentBalanceInSek = account.getCurrentBalanceInSek(); //never use double with currency, use BigDecimal
         Double balance = null;
         
         switch (currency) {
@@ -99,18 +106,21 @@ public class AccountBalanceService {
                 balance = converterService.convert(currentBalanceInSek, SEK, USD);
                 break;
             case EURO:
-                balance = converterService.convert(currentBalanceInSek, SEK, GBP);
+                balance = converterService.convert(currentBalanceInSek, SEK, GBP); //Missing break
             case GBP:
                 throw new NotImplementedException("GBP format not implemented");
             case SEK:
                 balance = currentBalanceInSek;
                 break;
         }
-        if ((currency.equals(USD) && balance > 10000) || (currency.equals(Currency.EURO) && balance > 8400)
+        //Deal with this inside the Switch instead
+        if ((currency.equals(USD) && balance > 10000)
+                || (currency.equals(Currency.EURO) && balance > 8400)
                 || (currency.equals(SEK) && balance > 86000)) {
             
             alertService.triggerAlert(accountId, "investment_opportunity");
         }
+        //Always comment when code is commented out ... or remove it
     /*
         if ((currency.equals(USD) && balance < 10) || (currency.equals(Currency.EURO) && balance < 84)
             || (currency.equals(SEK) && balance < 86)) {
@@ -120,9 +130,9 @@ public class AccountBalanceService {
         
         Date lastTransaction = account.getLastTransaction();
         String dateString = DATE_FORMAT.format(lastTransaction);
-        return new Balance(accountId, balance, account.getAccountHolder(), dateString);
+        return new Balance(accountId, balance, account.getAccountHolder(), dateString); //accountId can be null here
     }
-    
+    //Ponder the possibility of using a Map instead of an innerclass to generate the JSON
     public static class Balance {
         public final Integer accountId;
         public final double balance;
